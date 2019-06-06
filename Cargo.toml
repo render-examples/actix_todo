@@ -1,22 +1,22 @@
 [package]
-authors = ["Dan Munckton <dangit@munckfish.net>"]
+authors = ["Render Developers <dev@render.com>"]
 name = "actix-todo"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 
 [dependencies]
-actix-web = "1.0.0-beta.5"
-actix-files = "0.1.0-beta.4"
-actix-session = "0.1.0-beta.4"
-dotenv = "0.13.0"
-env_logger = "0.5.10"
-futures = "0.1.22"
-log = "0.4.3"
-serde = "1.0.69"
-serde_derive = "1.0.69"
-serde_json = "1.0.22"
-tera = "0.11.8"
+actix-web = "1.0.0"
+actix-files = "0.1.1"
+actix-session = "0.1.1"
+dotenv = "0.14.1"
+env_logger = "0.6.1"
+futures = "0.1.27"
+log = "0.4.6"
+serde = "1.0.92"
+serde_derive = "1.0.92"
+serde_json = "1.0.39"
+tera = "0.11.20"
 
 [dependencies.diesel]
 features = ["postgres", "r2d2"]
-version = "1.3.2"
+version = "1.4.2"
