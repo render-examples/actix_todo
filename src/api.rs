@@ -3,7 +3,7 @@ use actix_session::Session;
 use actix_web::middleware::errhandlers::ErrorHandlerResponse;
 use actix_web::{dev, error, http, web, Error, HttpResponse, Responder, Result};
 use futures::future::{err, Either, Future, IntoFuture};
-use tera::{Context, Tera};
+use tera::{escape_html, Context, Tera};
 
 use crate::db;
 use crate::session::{self, FlashMessage};
@@ -18,12 +18,16 @@ pub fn index(
         .then(move |res| match res {
             Ok(tasks) => {
                 let mut context = Context::new();
-                context.insert("tasks", &tasks);
+                let escaped_tasks = tasks
+                    .iter()
+                    .map(|task| task.html_escaped())
+                    .collect::<Vec<_>>();
+                context.insert("tasks", &escaped_tasks);
 
                 //Session is set during operations on other endpoints
                 //that can redirect to index
                 if let Some(flash) = session::get_flash(&session)? {
-                    context.insert("msg", &(flash.kind, flash.message));
+                    context.insert("msg", &(flash.kind, escape_html(&flash.message)));
                     session::clear_flash(&session);
                 }
 
