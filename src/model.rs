@@ -1,6 +1,7 @@
 use diesel;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+use tera::escape_html;
 
 use crate::schema::{
     tasks,
@@ -43,5 +44,12 @@ impl Task {
 
     pub fn delete_with_id(id: i32, conn: &PgConnection) -> QueryResult<usize> {
         diesel::delete(all_tasks.find(id)).execute(conn)
+    }
+
+    pub fn html_escaped(self: &Self) -> Task {
+        Task {
+            description: escape_html(&self.description),
+            ..*self
+        }
     }
 }

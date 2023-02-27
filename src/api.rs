@@ -18,7 +18,11 @@ pub fn index(
         .then(move |res| match res {
             Ok(tasks) => {
                 let mut context = Context::new();
-                context.insert("tasks", &tasks);
+                let escaped_tasks = tasks
+                    .iter()
+                    .map(|task| task.html_escaped())
+                    .collect::<Vec<_>>();
+                context.insert("tasks", &escaped_tasks);
 
                 //Session is set during operations on other endpoints
                 //that can redirect to index
