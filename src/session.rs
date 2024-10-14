@@ -1,14 +1,15 @@
 use actix_session::Session;
 use actix_web::error::Result;
+use serde::{Deserialize, Serialize};
 
 const FLASH_KEY: &str = "flash";
 
 pub fn set_flash(session: &Session, flash: FlashMessage) -> Result<()> {
-    session.set(FLASH_KEY, flash)
+    Ok(session.insert(FLASH_KEY, flash)?)
 }
 
 pub fn get_flash(session: &Session) -> Result<Option<FlashMessage>> {
-    session.get::<FlashMessage>(FLASH_KEY)
+    Ok(session.get::<FlashMessage>(FLASH_KEY)?)
 }
 
 pub fn clear_flash(session: &Session) {

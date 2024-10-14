@@ -1,44 +1,46 @@
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate tera;
-
 use std::{env, io};
 
-use actix_files as fs;
-use actix_session::CookieSession;
-use actix_web::middleware::{errhandlers::ErrorHandlers, Logger};
-use actix_web::{http, web, App, HttpServer};
-use dotenv::dotenv;
+use actix_files::Files;
+use actix_session::{storage::CookieSessionStore, SessionMiddleware};
+use actix_web::{
+    http,
+    middleware::{ErrorHandlers, Logger},
+    web, App, HttpServer,
+};
+use dotenvy::dotenv;
 use tera::Tera;
 
 mod api;
 mod db;
 mod model;
-mod schema;
 mod session;
 
-static SESSION_SIGNING_KEY: &[u8] = &[0; 32];
+// NOTE: Not a suitable session key for production.
+static SESSION_SIGNING_KEY: &[u8] = &[0; 64];
 
-fn main() -> io::Result<()> {
+#[actix_web::main]
+async fn main() -> io::Result<()> {
     dotenv().ok();
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    env::set_var("RUST_LOG", "actix_todo=debug,actix_web=info");
-    env_logger::init();
+    let key = actix_web::cookie::Key::from(SESSION_SIGNING_KEY);
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = db::init_pool(&database_url).expect("Failed to create pool");
+    let pool = db::init_pool(&database_url)
+        .await
+        .expect("Failed to create pool");
 
-    let app = move || {
-        debug!("Constructing the App");
+    log::info!("starting HTTP server at http://localhost:8080");
 
-        let templates: Tera = compile_templates!("templates/**/*");
+    HttpServer::new(move || {
+        log::debug!("Constructing the App");
 
-        let session_store = CookieSession::signed(SESSION_SIGNING_KEY).secure(false);
+        let mut templates = Tera::new("templates/**/*").expect("errors in tera templates");
+        templates.autoescape_on(vec!["tera"]);
+
+        let session_store = SessionMiddleware::builder(CookieSessionStore::default(), key.clone())
+            .cookie_secure(false)
+            .build();
 
         let error_handlers = ErrorHandlers::new()
             .handler(
@@ -49,19 +51,18 @@ fn main() -> io::Result<()> {
             .handler(http::StatusCode::NOT_FOUND, api::not_found);
 
         App::new()
-            .data(templates)
-            .data(pool.clone())
+            .app_data(web::Data::new(templates))
+            .app_data(web::Data::new(pool.clone()))
             .wrap(Logger::default())
             .wrap(session_store)
             .wrap(error_handlers)
-            .service(web::resource("/").route(web::get().to_async(api::index)))
-            .service(web::resource("/todo").route(web::post().to_async(api::create)))
-            .service(
-                web::resource("/todo/{id}").route(web::post().to_async(api::update)),
-            )
-            .service(fs::Files::new("/static", "static/"))
-    };
-
-    debug!("Starting server");
-    HttpServer::new(app).bind("0.0.0.0:8088")?.run()
+            .service(web::resource("/").route(web::get().to(api::index)))
+            .service(web::resource("/todo").route(web::post().to(api::create)))
+            .service(web::resource("/todo/{id}").route(web::post().to(api::update)))
+            .service(Files::new("/static", "./static"))
+    })
+    .bind(("0.0.0.0", 10000))?
+    .workers(2)
+    .run()
+    .await
 }
